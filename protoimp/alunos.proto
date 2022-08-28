@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package protoimp;
+
+option go_package = "cyborgrj/new-alunos;alunos_grpc";
+
+service AlunoManegement {
+    rpc CreateAluno (NewAluno) returns (Aluno) {}
+    rpc GetAlunos (GetAlunosParams) returns (AlunosList) {}
+    rpc GetAluno (GetAlunosParams) returns (Aluno) {}
+    rpc UpdateAluno (NewAluno) returns (Aluno) {}
+    rpc DeleteAluno (GetAlunosParams) returns (Aluno) {}
+}
+
+message NewAluno {
+    string name = 1;
+    string serie = 2;
+    string cpf = 3;
+    string email = 4;
+    string datanascimento = 5;
+    string cep = 6;
+}
+
+message Aluno {
+    string id = 1;
+    string name = 2;
+    string serie = 3;
+    string cpf = 4;
+    string email = 5;
+    string datanascimento = 6;
+    int32 idade = 7;
+    Address endereco = 8;
+}
+
+message Address {
+    string cep = 1;
+    string logradouro= 2;
+    string bairro = 3;
+    string localidade = 4;
+    string uf = 5;
+    string complemento = 6;
+}
+
+message AlunosList {
+    repeated Aluno alunos =1;
+}
+
+message GetAlunosParams {
+    string cpf = 1;
+    string name = 2;
+}
