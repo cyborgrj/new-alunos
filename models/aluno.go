@@ -49,6 +49,21 @@ func (a NewAluno) IsValid() error {
 	return nil
 }
 
+func (a NewAluno) QueryFiber(ctx *fiber.Ctx) (*Aluno, error) {
+	query := &NewAluno{}
+	dados_aluno := &Aluno{}
+
+	err := ctx.BodyParser(query)
+	if err != nil {
+		return nil, err
+	}
+
+	dados_aluno.Cpf = query.Cpf
+	dados_aluno.Name = query.Name
+
+	return dados_aluno, nil
+}
+
 func (a NewAluno) FromFiber(ctx *fiber.Ctx) (*Aluno, error) {
 	payload := &NewAluno{}
 

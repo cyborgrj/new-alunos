@@ -40,28 +40,110 @@ func CreateAlunoFiber(ctx *fiber.Ctx) error {
 
 func GetAlunosFiber(ctx *fiber.Ctx) error {
 	cntx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	var singleAluno *models.Aluno
 	var alunos []models.Aluno
+	a := &models.NewAluno{}
+
 	defer cancel()
 
-	results, err := alunoCollection.Find(cntx, bson.M{})
-
+	query, err := a.QueryFiber(ctx)
 	if err != nil {
-		return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
+		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
 	}
 
-	//iterando os dados do banco
-	defer results.Close(cntx)
-	for results.Next(cntx) {
-		var singleAluno models.Aluno
-		if err = results.Decode(&singleAluno); err != nil {
-			return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
+	if query.Cpf != "" {
+		cpf_aluno := query.Cpf
+		err := alunoCollection.FindOne(cntx, bson.M{"cpf": cpf_aluno}).Decode(&singleAluno)
+		if err != nil {
+			return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
 		}
-
 		// Calcular data de nascimento
 		hoje := time.Now()
 		datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
 		singleAluno.Idade = int32(Age(datanasc, hoje))
-		alunos = append(alunos, singleAluno)
+	} else if query.Name != "" {
+		nome_aluno := query.Name
+		filter := bson.M{"name": bson.M{"$regex": nome_aluno, "$options": "im"}}
+		results, err := alunoCollection.Find(cntx, filter)
+		if err != nil {
+			return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+		}
+		defer results.Close(cntx)
+
+		for results.Next(cntx) {
+			var singleAluno models.Aluno
+			if err = results.Decode(&singleAluno); err != nil {
+				return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
+			}
+
+			// Calcular data de nascimento
+			hoje := time.Now()
+			datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
+			singleAluno.Idade = int32(Age(datanasc, hoje))
+			alunos = append(alunos, singleAluno)
+		}
+		return ctx.Status(http.StatusOK).JSON(alunos)
+	} else {
+		results, err := alunoCollection.Find(cntx, bson.M{})
+
+		if err != nil {
+			return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
+		}
+
+		//iterando os dados do banco
+		defer results.Close(cntx)
+		for results.Next(cntx) {
+			var singleAluno models.Aluno
+			if err = results.Decode(&singleAluno); err != nil {
+				return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
+			}
+
+			// Calcular data de nascimento
+			hoje := time.Now()
+			datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
+			singleAluno.Idade = int32(Age(datanasc, hoje))
+			alunos = append(alunos, singleAluno)
+		}
+		return ctx.Status(http.StatusOK).JSON(alunos)
 	}
-	return ctx.Status(http.StatusOK).JSON(alunos)
+
+	return ctx.Status(http.StatusOK).JSON(singleAluno)
+}
+
+func UpdateAlunoFiber(ctx *fiber.Ctx) error {
+	var singleAluno *models.Aluno
+	a := &models.NewAluno{}
+
+	cntx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	query, err := a.QueryFiber(ctx)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+	}
+
+	cpf_aluno := query.Cpf
+	err = alunoCollection.FindOne(ctx.UserContext(), bson.M{"cpf": cpf_aluno}).Decode(&singleAluno)
+	if err == mongo.ErrNoDocuments {
+		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+	}
+
+	aluno, err := a.FromFiber(ctx)
+	err = alunoCollection.FindOneAndUpdate(cntx, bson.M{"cpf": cpf_aluno}, bson.M{"$set": aluno}).Decode(&aluno)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+	}
+
+	// recuperar o aluno atualizado no banco para exibir no contexto, em vez dos dados do aluno anteriores à atualização
+	err = alunoCollection.FindOne(cntx, bson.M{"cpf": cpf_aluno}).Decode(&aluno)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+	}
+
+	// Calcular data de nascimento
+	hoje := time.Now()
+	datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
+	singleAluno.Idade = int32(Age(datanasc, hoje))
+
+	return ctx.Status(http.StatusOK).JSON(singleAluno)
 }

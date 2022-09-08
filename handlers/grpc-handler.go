@@ -129,3 +129,59 @@ func (server *AlunoManagementServer) GetAlunos(ctx context.Context, in *pb.GetAl
 		return alunos_list, nil
 	}
 }
+
+func (server *AlunoManagementServer) UpdateAluno(ctx context.Context, in *pb.NewAluno) (*pb.Aluno, error) {
+	singleAluno := &pb.Aluno{}
+	a := &models.NewAluno{}
+
+	cpf_aluno := in.GetCpf()
+	log.Printf("Received CPF: %v", cpf_aluno)
+
+	err := alunoCollection.FindOne(ctx, bson.M{"cpf": cpf_aluno}).Decode(&singleAluno)
+	if err != nil {
+		return nil, ce.ErrCPFNaoEncontrado
+	}
+
+	aluno_criado, err := a.FromProto(ctx, in)
+	if err != nil {
+		log.Fatalf("error parsing new aluno %v", ce.ErrAlunoInvalido)
+	}
+
+	err = alunoCollection.FindOneAndUpdate(ctx, bson.M{"cpf": aluno_criado.Cpf}, bson.M{"$set": aluno_criado}).Decode(&aluno_criado)
+	if err != nil {
+		return nil, err
+	}
+
+	// recuperar o aluno atualizado no banco para exibir no contexto, em vez dos dados do aluno anteriores à atualização
+	err = alunoCollection.FindOne(ctx, bson.M{"cpf": aluno_criado.Cpf}).Decode(&aluno_criado)
+	if err != nil {
+		return nil, err
+	}
+
+	// Gerar a data para exibir no contexto mas não gravar no banco.
+	hoje := time.Now()
+	datanasc, _ := time.Parse("02/01/2006", aluno_criado.Datanascimento)
+	aluno_criado.Idade = int32(Age(datanasc, hoje))
+
+	return aluno_criado, nil
+
+}
+
+func (server *AlunoManagementServer) DeleteAluno(ctx context.Context, in *pb.GetAlunosParams) (*pb.Aluno, error) {
+	singleAluno := &pb.Aluno{}
+
+	cpf_aluno := in.GetCpf()
+	log.Printf("Received CPF: %v", cpf_aluno)
+
+	err := alunoCollection.FindOneAndDelete(ctx, bson.M{"cpf": cpf_aluno}).Decode(&singleAluno)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calcular data de nascimento
+	hoje := time.Now()
+	datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
+	singleAluno.Idade = int32(Age(datanasc, hoje))
+
+	return singleAluno, nil
+}
