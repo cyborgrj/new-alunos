@@ -9,5 +9,4 @@ import (
 func AlunoRoute(app *fiber.App) {
 	app.Post("/aluno", hdl.CreateAlunoFiber)
 	app.Get("/alunos", hdl.GetAlunosFiber)
-	app.Put("/aluno", hdl.UpdateAlunoFiber)
 }
