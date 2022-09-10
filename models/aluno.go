@@ -22,7 +22,8 @@ type NewAluno struct {
 	Cpf            string `json:"cpf,omitempty" validate:"required"`
 	Email          string `json:"email,omitempty" validate:"required,email"`
 	Datanascimento string `json:"datanascimento,omitempty" validate:"required"`
-	Cep            string `json:"cep,omitempty"`
+	Cep            string `json:"cep,omitempty" validate:"required"`
+	Coin           string `json:"coin,omitempty" validate:"required,min=3,max=4"`
 }
 
 type Aluno struct {
@@ -34,6 +35,8 @@ type Aluno struct {
 	Datanascimento string `json:"datanascimento,omitempty"`
 	Idade          int32  `json:"idade,omitempty"`
 	Endereco       Address
+	CoinName       string `json:"coin,omitempty"`
+	CoinResponse   CoinResponse
 }
 
 func (a NewAluno) IsValid() error {
@@ -85,6 +88,36 @@ func (a NewAluno) FromFiber(ctx *fiber.Ctx) (*Aluno, error) {
 
 	aluno_criado := &Aluno{}
 	aluno_criado.Id = primitive.NewObjectID().String()
+	aluno_criado.Name = payload.Name
+	aluno_criado.Serie = payload.Serie
+	aluno_criado.Cpf = payload.Cpf
+	aluno_criado.Email = payload.Email
+	aluno_criado.Datanascimento = payload.Datanascimento
+	aluno_criado.Endereco = *endereco
+
+	return aluno_criado, nil
+}
+
+func (a NewAluno) FromFiberUpdate(ctx *fiber.Ctx) (*Aluno, error) {
+	payload := &NewAluno{}
+
+	err := ctx.BodyParser(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	err = payload.IsValid()
+	if err != nil {
+		return nil, err
+	}
+
+	endereco, _, err := ToAdress(payload.Cep)
+	if err != nil {
+		log.Printf("%v", ce.ErrCEPnaoRecuperado)
+		return nil, ce.ErrCEPnaoRecuperado
+	}
+
+	aluno_criado := &Aluno{}
 	aluno_criado.Name = payload.Name
 	aluno_criado.Serie = payload.Serie
 	aluno_criado.Cpf = payload.Cpf

@@ -29,6 +29,14 @@ func CreateAlunoFiber(ctx *fiber.Ctx) error {
 		return err
 	}
 
+	// Gerar moeda para exibir no contexto, a moeda e seus valores não são gravados no banco.
+	coinFiber, _, errCoin := models.ToCoin(aluno.CoinName)
+	if errCoin != nil {
+		return errCoin
+	}
+
+	aluno.CoinResponse = *coinFiber
+
 	// Gerar a data para exibir no contexto mas não gravar no banco.
 	hoje := time.Now()
 	datanasc, _ := time.Parse("02/01/2006", aluno.Datanascimento)
@@ -115,7 +123,8 @@ func UpdateAlunoFiber(ctx *fiber.Ctx) error {
 	defer cancel()
 
 	a := &models.NewAluno{}
-	updated_aluno, err := a.FromFiber(ctx)
+
+	updated_aluno, err := a.FromFiberUpdate(ctx)
 	if err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(err.Error())
 	}
@@ -137,4 +146,23 @@ func UpdateAlunoFiber(ctx *fiber.Ctx) error {
 	updated_aluno.Idade = int32(Age(datanasc, hoje))
 
 	return ctx.Status(http.StatusBadRequest).JSON(updated_aluno)
+}
+
+func DeleteAlunoFiber(ctx *fiber.Ctx) error {
+	cntx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	a := &models.NewAluno{}
+
+	query, err := a.QueryFiber(ctx)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(err.Error())
+	}
+
+	err = alunoCollection.FindOneAndDelete(cntx, bson.M{"cpf": query.Cpf}).Decode(&query)
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoInvalido.Error())
+	}
+
+	return ctx.Status(http.StatusBadRequest).JSON(query)
 }

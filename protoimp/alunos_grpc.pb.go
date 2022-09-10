@@ -27,6 +27,8 @@ type AlunoManegementClient interface {
 	GetAluno(ctx context.Context, in *GetAlunosParams, opts ...grpc.CallOption) (*Aluno, error)
 	UpdateAluno(ctx context.Context, in *NewAluno, opts ...grpc.CallOption) (*Aluno, error)
 	DeleteAluno(ctx context.Context, in *GetAlunosParams, opts ...grpc.CallOption) (*Aluno, error)
+	GetCoin(ctx context.Context, in *GetCoinRequest, opts ...grpc.CallOption) (*GetCoinResponse, error)
+	SubscribeCoin(ctx context.Context, opts ...grpc.CallOption) (AlunoManegement_SubscribeCoinClient, error)
 }
 
 type alunoManegementClient struct {
@@ -82,6 +84,46 @@ func (c *alunoManegementClient) DeleteAluno(ctx context.Context, in *GetAlunosPa
 	return out, nil
 }
 
+func (c *alunoManegementClient) GetCoin(ctx context.Context, in *GetCoinRequest, opts ...grpc.CallOption) (*GetCoinResponse, error) {
+	out := new(GetCoinResponse)
+	err := c.cc.Invoke(ctx, "/protoimp.AlunoManegement/GetCoin", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alunoManegementClient) SubscribeCoin(ctx context.Context, opts ...grpc.CallOption) (AlunoManegement_SubscribeCoinClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AlunoManegement_ServiceDesc.Streams[0], "/protoimp.AlunoManegement/SubscribeCoin", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &alunoManegementSubscribeCoinClient{stream}
+	return x, nil
+}
+
+type AlunoManegement_SubscribeCoinClient interface {
+	Send(*GetCoinRequest) error
+	Recv() (*SubscribeCryptoResponse, error)
+	grpc.ClientStream
+}
+
+type alunoManegementSubscribeCoinClient struct {
+	grpc.ClientStream
+}
+
+func (x *alunoManegementSubscribeCoinClient) Send(m *GetCoinRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *alunoManegementSubscribeCoinClient) Recv() (*SubscribeCryptoResponse, error) {
+	m := new(SubscribeCryptoResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // AlunoManegementServer is the server API for AlunoManegement service.
 // All implementations must embed UnimplementedAlunoManegementServer
 // for forward compatibility
@@ -91,6 +133,8 @@ type AlunoManegementServer interface {
 	GetAluno(context.Context, *GetAlunosParams) (*Aluno, error)
 	UpdateAluno(context.Context, *NewAluno) (*Aluno, error)
 	DeleteAluno(context.Context, *GetAlunosParams) (*Aluno, error)
+	GetCoin(context.Context, *GetCoinRequest) (*GetCoinResponse, error)
+	SubscribeCoin(AlunoManegement_SubscribeCoinServer) error
 	mustEmbedUnimplementedAlunoManegementServer()
 }
 
@@ -112,6 +156,12 @@ func (UnimplementedAlunoManegementServer) UpdateAluno(context.Context, *NewAluno
 }
 func (UnimplementedAlunoManegementServer) DeleteAluno(context.Context, *GetAlunosParams) (*Aluno, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAluno not implemented")
+}
+func (UnimplementedAlunoManegementServer) GetCoin(context.Context, *GetCoinRequest) (*GetCoinResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCoin not implemented")
+}
+func (UnimplementedAlunoManegementServer) SubscribeCoin(AlunoManegement_SubscribeCoinServer) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeCoin not implemented")
 }
 func (UnimplementedAlunoManegementServer) mustEmbedUnimplementedAlunoManegementServer() {}
 
@@ -216,6 +266,50 @@ func _AlunoManegement_DeleteAluno_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlunoManegement_GetCoin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCoinRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlunoManegementServer).GetCoin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protoimp.AlunoManegement/GetCoin",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlunoManegementServer).GetCoin(ctx, req.(*GetCoinRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlunoManegement_SubscribeCoin_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AlunoManegementServer).SubscribeCoin(&alunoManegementSubscribeCoinServer{stream})
+}
+
+type AlunoManegement_SubscribeCoinServer interface {
+	Send(*SubscribeCryptoResponse) error
+	Recv() (*GetCoinRequest, error)
+	grpc.ServerStream
+}
+
+type alunoManegementSubscribeCoinServer struct {
+	grpc.ServerStream
+}
+
+func (x *alunoManegementSubscribeCoinServer) Send(m *SubscribeCryptoResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *alunoManegementSubscribeCoinServer) Recv() (*GetCoinRequest, error) {
+	m := new(GetCoinRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // AlunoManegement_ServiceDesc is the grpc.ServiceDesc for AlunoManegement service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -243,7 +337,18 @@ var AlunoManegement_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "DeleteAluno",
 			Handler:    _AlunoManegement_DeleteAluno_Handler,
 		},
+		{
+			MethodName: "GetCoin",
+			Handler:    _AlunoManegement_GetCoin_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SubscribeCoin",
+			Handler:       _AlunoManegement_SubscribeCoin_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "protoimp/alunos.proto",
 }

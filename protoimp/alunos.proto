@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package protoimp;
 
+
 option go_package = "cyborgrj/new-alunos;alunos_grpc";
 
 service AlunoManegement {
@@ -10,6 +11,8 @@ service AlunoManegement {
     rpc GetAluno (GetAlunosParams) returns (Aluno) {}
     rpc UpdateAluno (NewAluno) returns (Aluno) {}
     rpc DeleteAluno (GetAlunosParams) returns (Aluno) {}
+    rpc GetCoin (GetCoinRequest) returns (GetCoinResponse) {}
+    rpc SubscribeCoin (stream GetCoinRequest) returns (stream SubscribeCryptoResponse) {}
 }
 
 message NewAluno {
@@ -19,6 +22,7 @@ message NewAluno {
     string email = 4;
     string datanascimento = 5;
     string cep = 6;
+    string coinname = 7;
 }
 
 message Aluno {
@@ -30,6 +34,8 @@ message Aluno {
     string datanascimento = 6;
     int32 idade = 7;
     Address endereco = 8;
+    string coin = 9; 
+    GetCoinResponse CoinResponse = 10;
 }
 
 message Address {
@@ -48,4 +54,41 @@ message AlunosList {
 message GetAlunosParams {
     string cpf = 1;
     string name = 2;
+}
+
+message GetCoinRequest {
+    // Name é o nome da moeda, serve tanto para o símbolo(BTC, ETH) ou nome completo(Bitcoin)
+    string Name = 1;
+}
+
+message GetCoinResponse {
+    // Name é o nome completo (por extenso) da moeda, em caps
+    string Name = 1;
+    
+    // Symbol é o nome reduzido (BTC, ETH) da moeda, em caps
+    string Symbol = 2;
+   
+    // MarketCapUSD é o valor corrente da moeda no mercado
+    double MarketCapUSD = 3;
+
+    // Price é o valor corrente da moeda em USD
+    double Price = 4;
+
+    // CirculatingSupply é a quantidade da mueda que está disponível/circulando no mercado
+    double CirculatingSupply = 5;
+
+    // Volume é o valor todal em dólar que foi negociado nas últimas 24 horas
+    double Volume = 6;
+
+    // Change é o valor percentual que indica as variações no valor corrente, 
+    // na última hora ou dia
+    string ChangeHour = 8;
+    string ChangeDay = 9;
+}
+
+message SubscribeCryptoResponse {
+    oneof message {
+        // GetCoinResponse é a mensagem de resposta com os dados da moeda solicitada
+        GetCoinResponse GetCoinResponse = 1;
+    }
 }
