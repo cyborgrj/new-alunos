@@ -93,6 +93,7 @@ func (a NewAluno) FromFiber(ctx *fiber.Ctx) (*Aluno, error) {
 	aluno_criado.Cpf = payload.Cpf
 	aluno_criado.Email = payload.Email
 	aluno_criado.Datanascimento = payload.Datanascimento
+	aluno_criado.CoinName = payload.Coin
 	aluno_criado.Endereco = *endereco
 
 	return aluno_criado, nil

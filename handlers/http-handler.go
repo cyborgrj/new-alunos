@@ -14,6 +14,7 @@ import (
 
 func CreateAlunoFiber(ctx *fiber.Ctx) error {
 	a := &models.NewAluno{}
+
 	aluno, err := a.FromFiber(ctx)
 	if err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(err.Error())
@@ -34,7 +35,6 @@ func CreateAlunoFiber(ctx *fiber.Ctx) error {
 	if errCoin != nil {
 		return errCoin
 	}
-
 	aluno.CoinResponse = *coinFiber
 
 	// Gerar a data para exibir no contexto mas não gravar no banco.

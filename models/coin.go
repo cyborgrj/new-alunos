@@ -30,26 +30,81 @@ type CoinResponse struct {
 	ChangeDay  string `protobuf:"bytes,9,opt,name=ChangeDay,proto3" json:"ChangeDay,omitempty"`
 }
 
+// type Coin struct {
+// 	Status struct {
+// 		Timestamp time.Time `json:"timestamp"`
+// 	} `json:"status"`
+// 	Data struct {
+// 		Num1 struct {
+// 			ID        int       `json:"id"`
+// 			Name      string    `json:"name"`
+// 			Symbol    string    `json:"symbol"`
+// 			Slug      string    `json:"slug"`
+// 			DateAdded time.Time `json:"date_added"`
+// 			Quote     struct {
+// 				Usd struct {
+// 					Price           float64   `json:"price"`
+// 					Volume24H       float64   `json:"volume_24h"`
+// 					VolumeChange24H float64   `json:"volume_change_24h"`
+// 					LastUpdated     time.Time `json:"last_updated"`
+// 				} `json:"USD"`
+// 			} `json:"quote"`
+// 		} `json:"1"`
+// 	} `json:"data"`
+// }
+
 type Coin struct {
 	Status struct {
-		Timestamp time.Time `json:"timestamp"`
+		Timestamp    time.Time   `json:"timestamp"`
+		ErrorCode    int         `json:"error_code"`
+		ErrorMessage interface{} `json:"error_message"`
+		Elapsed      int         `json:"elapsed"`
+		CreditCount  int         `json:"credit_count"`
+		Notice       interface{} `json:"notice"`
 	} `json:"status"`
 	Data struct {
-		Num1 struct {
-			ID        int       `json:"id"`
-			Name      string    `json:"name"`
-			Symbol    string    `json:"symbol"`
-			Slug      string    `json:"slug"`
-			DateAdded time.Time `json:"date_added"`
-			Quote     struct {
+		CoinSymbolSt []struct {
+			ID             int       `json:"id"`
+			Name           string    `json:"name"`
+			Symbol         string    `json:"symbol"`
+			Slug           string    `json:"slug"`
+			NumMarketPairs int       `json:"num_market_pairs"`
+			DateAdded      time.Time `json:"date_added"`
+			Tags           []struct {
+				Slug     string `json:"slug"`
+				Name     string `json:"name"`
+				Category string `json:"category"`
+			} `json:"tags"`
+			MaxSupply                     int         `json:"max_supply"`
+			CirculatingSupply             int         `json:"circulating_supply"`
+			TotalSupply                   int         `json:"total_supply"`
+			IsActive                      int         `json:"is_active"`
+			Platform                      interface{} `json:"platform"`
+			CmcRank                       int         `json:"cmc_rank"`
+			IsFiat                        int         `json:"is_fiat"`
+			SelfReportedCirculatingSupply interface{} `json:"self_reported_circulating_supply"`
+			SelfReportedMarketCap         interface{} `json:"self_reported_market_cap"`
+			TvlRatio                      interface{} `json:"tvl_ratio"`
+			LastUpdated                   time.Time   `json:"last_updated"`
+			Quote                         struct {
 				Usd struct {
-					Price           float64   `json:"price"`
-					Volume24H       float64   `json:"volume_24h"`
-					VolumeChange24H float64   `json:"volume_change_24h"`
-					LastUpdated     time.Time `json:"last_updated"`
+					Price                 float64     `json:"price"`
+					Volume24H             float64     `json:"volume_24h"`
+					VolumeChange24H       float64     `json:"volume_change_24h"`
+					PercentChange1H       float64     `json:"percent_change_1h"`
+					PercentChange24H      float64     `json:"percent_change_24h"`
+					PercentChange7D       float64     `json:"percent_change_7d"`
+					PercentChange30D      float64     `json:"percent_change_30d"`
+					PercentChange60D      float64     `json:"percent_change_60d"`
+					PercentChange90D      float64     `json:"percent_change_90d"`
+					MarketCap             float64     `json:"market_cap"`
+					MarketCapDominance    float64     `json:"market_cap_dominance"`
+					FullyDilutedMarketCap float64     `json:"fully_diluted_market_cap"`
+					Tvl                   interface{} `json:"tvl"`
+					LastUpdated           time.Time   `json:"last_updated"`
 				} `json:"USD"`
 			} `json:"quote"`
-		} `json:"1"`
+		} `json:"ETH"`
 	} `json:"data"`
 }
 
@@ -78,36 +133,43 @@ func GetCoinData(urlCoinMarket string, coinSymbol string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("%v", string(jsonByte))
 
 	return jsonByte, nil
 
 }
 
-func ToCoin(coin string) (*CoinResponse, *pb.GetCoinResponse, error) {
-	apiCoin := Coin{}
+func ToCoin(c string) (*CoinResponse, *pb.GetCoinResponse, error) {
+	apiCoin := &Coin{}
 	fiberCoin := &CoinResponse{}
 	protoCoin := &pb.GetCoinResponse{}
 	urlCoinMarket := "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
 
-	coinData, err := GetCoinData(urlCoinMarket, "BTC")
+	// Passa a função GetCoinData com a Url da API e Símbolo da moeda pesquisada.
+	coinData, err := GetCoinData(urlCoinMarket, c)
 	if err != nil {
 		return nil, nil, ce.ErrRecuperarCoinInformada
 	}
 
-	err = json.Unmarshal(coinData, &apiCoin)
+	err = json.Unmarshal(coinData, apiCoin)
 	if err != nil {
 		return nil, nil, ce.ErrUnmarshalCoinInformada
 	}
 
-	protoCoin.Name = apiCoin.Data.Num1.Name
-	protoCoin.Price = apiCoin.Data.Num1.Quote.Usd.Price
-	protoCoin.Symbol = apiCoin.Data.Num1.Symbol
-	protoCoin.Volume = apiCoin.Data.Num1.Quote.Usd.Volume24H
+	protoCoin.Name = apiCoin.Data.CoinSymbolSt[0].Name
+	protoCoin.Price = apiCoin.Data.CoinSymbolSt[0].Quote.Usd.Price
+	protoCoin.Symbol = apiCoin.Data.CoinSymbolSt[0].Symbol
+	protoCoin.Volume = apiCoin.Data.CoinSymbolSt[0].Quote.Usd.Volume24H
 
-	fiberCoin.Name = apiCoin.Data.Num1.Name
-	fiberCoin.Price = apiCoin.Data.Num1.Quote.Usd.Price
-	fiberCoin.Symbol = apiCoin.Data.Num1.Symbol
-	fiberCoin.Volume = apiCoin.Data.Num1.Quote.Usd.Volume24H
+	fiberCoin.Name = apiCoin.Data.CoinSymbolSt[0].Name
+	fiberCoin.Price = apiCoin.Data.CoinSymbolSt[0].Quote.Usd.Price
+	fiberCoin.Symbol = apiCoin.Data.CoinSymbolSt[0].Symbol
+	fiberCoin.Volume = apiCoin.Data.CoinSymbolSt[0].Quote.Usd.Volume24H
 
 	return fiberCoin, protoCoin, nil
+}
+
+func PPrint(i interface{}) string {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	return string(s)
 }
