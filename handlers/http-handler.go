@@ -19,22 +19,24 @@ func CreateAlunoFiber(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(err.Error())
 	}
+
+	// Gerar moeda e verificar para exibir no contexto, a moeda e seus valores não são gravados no banco.
+	coinFiber, _, errCoin := models.ToCoin(aluno.CoinName)
+	if errCoin != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrRecuperarCoinInformada.Error()))
+	}
+
 	// var alunoCollection já declarada no grpc-handler
 	err = alunoCollection.FindOne(ctx.UserContext(), bson.M{"cpf": aluno.Cpf}).Decode(&aluno)
 	if err != mongo.ErrNoDocuments {
-		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrCPFJaCadastrado.Error())
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrCPFJaCadastrado.Error()))
 	}
 
 	_, err = alunoCollection.InsertOne(ctx.UserContext(), aluno)
 	if err != nil {
 		return err
 	}
-
-	// Gerar moeda para exibir no contexto, a moeda e seus valores não são gravados no banco.
-	coinFiber, _, errCoin := models.ToCoin(aluno.CoinName)
-	if errCoin != nil {
-		return errCoin
-	}
+	// só após o aluno estar gravado no banco, atribuir os valores da crypto na struct do aluno
 	aluno.CoinResponse = *coinFiber
 
 	// Gerar a data para exibir no contexto mas não gravar no banco.
@@ -42,7 +44,7 @@ func CreateAlunoFiber(ctx *fiber.Ctx) error {
 	datanasc, _ := time.Parse("02/01/2006", aluno.Datanascimento)
 	aluno.Idade = int32(Age(datanasc, hoje))
 
-	return ctx.Status(http.StatusBadRequest).JSON(aluno)
+	return ctx.Status(http.StatusCreated).JSON(aluno)
 
 }
 
@@ -56,25 +58,35 @@ func GetAlunosFiber(ctx *fiber.Ctx) error {
 
 	query, err := a.QueryFiber(ctx)
 	if err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrAlunoNaoEncontrado.Error()))
 	}
 
 	if query.Cpf != "" {
 		cpf_aluno := query.Cpf
 		err := alunoCollection.FindOne(cntx, bson.M{"cpf": cpf_aluno}).Decode(&singleAluno)
 		if err != nil {
-			return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+			return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrAlunoNaoEncontrado.Error()))
 		}
+
+		// Gerar moeda e verificar para exibir no contexto
+		coinFiber, _, errCoin := models.ToCoin(singleAluno.CoinName)
+		if errCoin != nil {
+			return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrRecuperarCoinInformada.Error()))
+		}
+
 		// Calcular data de nascimento
 		hoje := time.Now()
 		datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
 		singleAluno.Idade = int32(Age(datanasc, hoje))
+
+		// atribuir os valores da crypto na struct do aluno
+		singleAluno.CoinResponse = *coinFiber
 	} else if query.Name != "" {
 		nome_aluno := query.Name
 		filter := bson.M{"name": bson.M{"$regex": nome_aluno, "$options": "im"}}
 		results, err := alunoCollection.Find(cntx, filter)
 		if err != nil {
-			return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+			return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrAlunoNaoEncontrado.Error()))
 		}
 		defer results.Close(cntx)
 
@@ -83,14 +95,23 @@ func GetAlunosFiber(ctx *fiber.Ctx) error {
 			if err = results.Decode(&singleAluno); err != nil {
 				return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
 			}
+			// Gerar moeda e verificar para exibir no contexto
+			coinFiber, _, errCoin := models.ToCoin(singleAluno.CoinName)
+			if errCoin != nil {
+				return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrRecuperarCoinInformada.Error()))
+			}
 
 			// Calcular data de nascimento
 			hoje := time.Now()
 			datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
 			singleAluno.Idade = int32(Age(datanasc, hoje))
+
+			// atribuir os valores da crypto na struct do aluno
+			singleAluno.CoinResponse = *coinFiber
+
 			alunos = append(alunos, singleAluno)
 		}
-		return ctx.Status(http.StatusOK).JSON(alunos)
+		return ctx.Status(http.StatusFound).JSON(alunos)
 	} else {
 		results, err := alunoCollection.Find(cntx, bson.M{})
 
@@ -106,13 +127,23 @@ func GetAlunosFiber(ctx *fiber.Ctx) error {
 				return ctx.Status(http.StatusInternalServerError).JSON(err.Error())
 			}
 
+			// Gerar moeda e verificar para exibir no contexto
+			coinFiber, _, errCoin := models.ToCoin(singleAluno.CoinName)
+			if errCoin != nil {
+				return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrRecuperarCoinInformada.Error()))
+			}
+
 			// Calcular data de nascimento
 			hoje := time.Now()
 			datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
 			singleAluno.Idade = int32(Age(datanasc, hoje))
+
+			// atribuir os valores da crypto na struct do aluno
+			singleAluno.CoinResponse = *coinFiber
+
 			alunos = append(alunos, singleAluno)
 		}
-		return ctx.Status(http.StatusOK).JSON(alunos)
+		return ctx.Status(http.StatusFound).JSON(alunos)
 	}
 
 	return ctx.Status(http.StatusOK).JSON(singleAluno)
@@ -129,23 +160,32 @@ func UpdateAlunoFiber(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(err.Error())
 	}
 
+	// Gerar moeda e verificar para exibir no contexto, a moeda e seus valores não são gravados no banco.
+	coinFiber, _, errCoin := models.ToCoin(updated_aluno.CoinName)
+	if errCoin != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrRecuperarCoinInformada.Error()))
+	}
+
 	err = alunoCollection.FindOneAndUpdate(cntx, bson.M{"cpf": updated_aluno.Cpf}, bson.M{"$set": updated_aluno}).Decode(&updated_aluno)
 	if err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoInvalido.Error())
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrAlunoInvalido.Error()))
 	}
 
 	// recuperar o aluno atualizado no banco para exibir no contexto, em vez dos dados do aluno anteriores à atualização
 	err = alunoCollection.FindOne(cntx, bson.M{"cpf": updated_aluno.Cpf}).Decode(&updated_aluno)
 	if err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoNaoEncontrado.Error())
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrAlunoNaoEncontrado.Error()))
 	}
+
+	// só após o aluno estar gravado no banco, atribuir os valores da crypto na struct do aluno
+	updated_aluno.CoinResponse = *coinFiber
 
 	// Gerar a data para exibir no contexto mas não gravar no banco.
 	hoje := time.Now()
 	datanasc, _ := time.Parse("02/01/2006", updated_aluno.Datanascimento)
 	updated_aluno.Idade = int32(Age(datanasc, hoje))
 
-	return ctx.Status(http.StatusBadRequest).JSON(updated_aluno)
+	return ctx.Status(http.StatusAccepted).JSON(updated_aluno)
 }
 
 func DeleteAlunoFiber(ctx *fiber.Ctx) error {
@@ -161,8 +201,8 @@ func DeleteAlunoFiber(ctx *fiber.Ctx) error {
 
 	err = alunoCollection.FindOneAndDelete(cntx, bson.M{"cpf": query.Cpf}).Decode(&query)
 	if err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(custom_errors.ErrAlunoInvalido.Error())
+		return ctx.Status(http.StatusBadRequest).JSON(string(custom_errors.ErrAlunoInvalido.Error()))
 	}
 
-	return ctx.Status(http.StatusBadRequest).JSON(query)
+	return ctx.Status(http.StatusAccepted).JSON(query)
 }

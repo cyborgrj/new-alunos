@@ -46,6 +46,12 @@ func (server *AlunoManagementServer) CreateAluno(ctx context.Context, in *pb.New
 		log.Fatalf("error parsing new aluno %v", ce.ErrAlunoInvalido)
 	}
 
+	// Gerar moeda e verificar para exibir no contexto, a moeda e seus valores não são gravados no banco.
+	_, coinProto, errCoin := models.ToCoin(aluno_criado.CoinName)
+	if errCoin != nil {
+		return nil, ce.ErrRecuperarCoinInformada
+	}
+
 	err = alunoCollection.FindOne(ctx, bson.M{"cpf": aluno_criado.Cpf}).Decode(&aluno_criado)
 	if err != mongo.ErrNoDocuments {
 		return nil, ce.ErrCPFJaCadastrado
@@ -55,6 +61,9 @@ func (server *AlunoManagementServer) CreateAluno(ctx context.Context, in *pb.New
 	if err != nil {
 		return nil, err
 	}
+
+	// só após o aluno estar gravado no banco, atribuir os valores da crypto na struct do aluno
+	aluno_criado.CoinResponse = coinProto
 
 	// Gerar a data para exibir no contexto mas não gravar no banco.
 	hoje := time.Now()
@@ -81,6 +90,16 @@ func (server *AlunoManagementServer) GetAlunos(ctx context.Context, in *pb.GetAl
 			if err = results.Decode(&singleAluno); err != nil {
 				return nil, err
 			}
+
+			// Gerar moeda e verificar para exibir no contexto
+			_, coinProto, errCoin := models.ToCoin(singleAluno.CoinName)
+			if errCoin != nil {
+				return nil, ce.ErrRecuperarCoinInformada
+			}
+
+			// atribuir os valores da crypto na struct do aluno
+			singleAluno.CoinResponse = coinProto
+
 			// Calcular data de nascimento
 			hoje := time.Now()
 			datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
@@ -104,6 +123,16 @@ func (server *AlunoManagementServer) GetAlunos(ctx context.Context, in *pb.GetAl
 			if err = results.Decode(&singleAluno); err != nil {
 				return nil, err
 			}
+
+			// Gerar moeda e verificar para exibir no contexto
+			_, coinProto, errCoin := models.ToCoin(singleAluno.CoinName)
+			if errCoin != nil {
+				return nil, ce.ErrRecuperarCoinInformada
+			}
+
+			// atribuir os valores da crypto na struct do aluno
+			singleAluno.CoinResponse = coinProto
+
 			// Calcular data de nascimento
 			hoje := time.Now()
 			datanasc, _ := time.Parse("02/01/2006", singleAluno.Datanascimento)
@@ -119,6 +148,15 @@ func (server *AlunoManagementServer) GetAlunos(ctx context.Context, in *pb.GetAl
 		if err != nil {
 			return nil, err
 		}
+
+		// Gerar moeda e verificar para exibir no contexto
+		_, coinProto, errCoin := models.ToCoin(singleAluno.CoinName)
+		if errCoin != nil {
+			return nil, ce.ErrRecuperarCoinInformada
+		}
+
+		// atribuir os valores da crypto na struct do aluno
+		singleAluno.CoinResponse = coinProto
 
 		// Calcular data de nascimento
 		hoje := time.Now()
@@ -147,6 +185,12 @@ func (server *AlunoManagementServer) UpdateAluno(ctx context.Context, in *pb.New
 		log.Fatalf("error parsing new aluno %v", ce.ErrAlunoInvalido)
 	}
 
+	// Gerar moeda e verificar para exibir no contexto, a moeda e seus valores não são gravados no banco.
+	_, coinProto, errCoin := models.ToCoin(aluno_criado.CoinName)
+	if errCoin != nil {
+		return nil, ce.ErrRecuperarCoinInformada
+	}
+
 	err = alunoCollection.FindOneAndUpdate(ctx, bson.M{"cpf": aluno_criado.Cpf}, bson.M{"$set": aluno_criado}).Decode(&aluno_criado)
 	if err != nil {
 		return nil, err
@@ -157,6 +201,9 @@ func (server *AlunoManagementServer) UpdateAluno(ctx context.Context, in *pb.New
 	if err != nil {
 		return nil, err
 	}
+
+	// só após o aluno estar gravado no banco, atribuir os valores da crypto na struct do aluno
+	aluno_criado.CoinResponse = coinProto
 
 	// Gerar a data para exibir no contexto mas não gravar no banco.
 	hoje := time.Now()
@@ -184,4 +231,20 @@ func (server *AlunoManagementServer) DeleteAluno(ctx context.Context, in *pb.Get
 	singleAluno.Idade = int32(Age(datanasc, hoje))
 
 	return singleAluno, nil
+}
+
+func (server *AlunoManagementServer) SearchAlunos(req *pb.SearchAlunoRequest, stream pb.AlunoManegement_SearchAlunosServer) error {
+	log.Printf("received a search-aluno request with filter: %v", req.Filter.GetCpf())
+	// singleAluno := pb.Aluno{}
+
+	if len(req.Filter.GetCpf()) > 1 {
+		cpf_aluno := req.Filter.GetCpf()
+		log.Printf("Received CPF: %v", cpf_aluno)
+
+		// err := alunoCollection.FindOne(ctx, bson.M{"cpf": cpf_aluno}).Decode(&singleAluno)
+		// if err != nil {
+		// 	return nil, err
+		// }
+	}
+	return nil
 }

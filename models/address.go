@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	ce "new-alunos/custom_errors"
 	pb "new-alunos/protoimp"
@@ -27,7 +27,7 @@ func GetData(url string) ([]byte, error) {
 	}
 	defer response.Body.Close()
 
-	jsonByte, err := ioutil.ReadAll(response.Body)
+	jsonByte, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}

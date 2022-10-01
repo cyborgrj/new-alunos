@@ -23,7 +23,7 @@ type NewAluno struct {
 	Email          string `json:"email,omitempty" validate:"required,email"`
 	Datanascimento string `json:"datanascimento,omitempty" validate:"required"`
 	Cep            string `json:"cep,omitempty" validate:"required"`
-	Coin           string `json:"coin,omitempty" validate:"required,min=3,max=4"`
+	Coin           string `json:"coin,omitempty" validate:"required,min=3,max=15"`
 }
 
 type Aluno struct {
@@ -124,6 +124,7 @@ func (a NewAluno) FromFiberUpdate(ctx *fiber.Ctx) (*Aluno, error) {
 	aluno_criado.Cpf = payload.Cpf
 	aluno_criado.Email = payload.Email
 	aluno_criado.Datanascimento = payload.Datanascimento
+	aluno_criado.CoinName = payload.Coin
 	aluno_criado.Endereco = *endereco
 
 	return aluno_criado, nil
@@ -138,6 +139,7 @@ func (a *NewAluno) FromProto(ctx context.Context, in *pb.NewAluno) (*pb.Aluno, e
 		Serie:          in.GetSerie(),
 		Datanascimento: in.GetDatanascimento(),
 		Cep:            in.GetCep(),
+		Coin:           in.GetCoin(),
 	}
 
 	err := a.IsValid()
@@ -153,6 +155,7 @@ func (a *NewAluno) FromProto(ctx context.Context, in *pb.NewAluno) (*pb.Aluno, e
 		Serie:          a.Serie,
 		Datanascimento: a.Datanascimento,
 		Id:             primitive.NewObjectID().String(),
+		CoinName:       a.Coin,
 	}
 
 	_, endereco, err := ToAdress(a.Cep)
